@@ -152,8 +152,8 @@ function register (res, params) {
 
                   conn.release();
 
-                  console.log('New user!');
-                  contentDeliver(res, '');
+                  console.log('New user: ' + name);
+                  contentDeliver(res, {});
                 });
               });              
             });
@@ -182,7 +182,7 @@ function register (res, params) {
 
               // Compare passwords
               if (passwordHash === passwordHashOfficial)
-                contentDeliver(res, '');
+                contentDeliver(res, {});
               else
                 contentDeliver(res, {error: 'User ' + name + ' registered with a different password'});
 

@@ -5,8 +5,9 @@ Node.js server for Senkan.
 
 ## Usage
 
-Run this command in the main directory of the server:
+Run this commands in the main directory of the server:
 ```
+$ npm update
 $ node senkan <port>
 ```
 
