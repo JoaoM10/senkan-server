@@ -17,10 +17,10 @@ var TCPport = Number(process.argv[2]);
 
 
 // Create pool of connections do MySQL DB
-var DBpool = mysql.createConnection({
+var DBpool = mysql.createPool({
   host: 'localhost',
-  user: 'senkan',
-  password: 'randompwhere',
+  user: 'root',
+  password: '',
   database: 'senkan',
   connectionLimit: 73
 });
@@ -36,9 +36,7 @@ app
     
     // Deliver the ranking
     router.post('/ranking', function (req, res, next) {
-      var result = getRanking();
-      res.writeHeader(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(result));
+      getRanking(res);
     });
 
     
@@ -77,29 +75,33 @@ app.listen(TCPport);
 
 
 // Obtain ranking from DB
-function getRanking () {
+function getRanking (res) {
   
   DBpool.getConnection(function (err, conn) {
     
     if (err) {
       console.log('Error on DB connection: ' + err);
-      return { error: 'Error obtaining ranking! Try again...' }
+      res.writeHeader(500, {});
+      res.end();
+      return;
     }
     
-    conn.query('SELECT users.name as name, ranking.shots as shots FROM ranking INNER JOIN users ON ranking.user = users.user_id ORDER BY shots, created_at LIMIT 10', function (err, rows) {
+    conn.query('SELECT users.name as name, ranking.shots as shots FROM ranking INNER JOIN users ON ranking.user = users.user_id ORDER BY ranking.shots, ranking.created_at LIMIT 10', function (err, rows) {
 
       if (err) {
         console.log('Error on query the DB: ' + err);
-        return { error: 'Error obtaining ranking! Try again...' }
+        res.writeHeader(500, {});
+        res.end();
+        return;
       }
       
       conn.release();
+      
+      result = { ranking: rows };
+      
+      res.writeHeader(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(result));
 
-      var rankingList = [];
-      for (var i = 0; i < rows.length; i ++)
-        rankingList.push({ name: rows[i].name, shots: rows[i].shots });
-
-      return { ranking: rankingList };
     });
                
   });
