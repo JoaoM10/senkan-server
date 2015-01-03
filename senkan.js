@@ -244,9 +244,13 @@ function join (res, params) {
     var board = params.board;
 
     var gameInfo = gamesWaiting.pop();
-    if (gameInfo === undefined) {
-      gameInfo = game(res, board);
+    if (gameInfo === undefined) { // No players waiting, create new game
+      gameInfo = game();
+      gameInfo.addPlayer(name, board);
       gamesWaiting.push(gameInfo);
+    }
+    else if (gameInfo.getFirstPlayer().name !== name) { // Don't allow games with himself
+      gameInfo.addPlayer(name, board);
     }
       
     contentDeliver(res, { game: gameInfo.id, key: gameInfo.key });  
