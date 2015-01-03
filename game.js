@@ -1,7 +1,13 @@
+var crypto = require('crypto');
 
-exports.create = function (board) {
+
+var gameCnt = 1;
 
 
-  
-
+module.exports = function (res, board) {
+  return {
+    id: gameCnt ++,
+    key: crypto.randomBytes(32).toString('hex')
+  };
 };
+

@@ -41,14 +41,14 @@ exports.board = function (board) {
           var size = 1;
           vis[i][j] = true;
           
-          if (board[i - 1][j - 1 + 1]) { // placed horizontally
-            while (board[i - 1][j - 1 + size]) {
+          if (j < 10 && board[i - 1][j - 1 + 1]) { // placed horizontally
+            while (j - 1 + size < 10 && board[i - 1][j - 1 + size]) {
               vis[i][j + size] = true;
               size ++;
             }
           }
           else { // placed vertically
-            while (board[i - 1 + size][j - 1]) {
+            while (i - 1 + size < 10 && board[i - 1 + size][j - 1]) {
               vis[i + size][j] = true;
               size ++;
             }

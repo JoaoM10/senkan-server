@@ -240,7 +240,7 @@ function join (res, params) {
     var password = params.pass;
     var board = params.board;
 
-    var game_info = game.create(board);
+    var game_info = game(res, board);
     contentDeliver(res, { game: game_info.id, key: game_info.key });  
     
   });
