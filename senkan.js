@@ -34,25 +34,25 @@ app
   .use(bodyParser.json())
   .use(connectRoute(function (router) {
 
-    
+
     // Deliver the ranking
     router.post('/ranking', function (req, res, next) {
       ranking(res);
     });
 
-    
+
     // Deal with registration/login
     router.post('/register', function (req, res, next) {
       register(res, req.body);
     });
 
-    
+
     // Match other (invalid) functions
     router.post(':unknown', function (req, res, next) {
       contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
     });
 
-    
+
   }))
   .use(function (err, req, res, next) {
     errorDeliver(res, err);
@@ -63,21 +63,21 @@ app.listen(TCPport);
 
 // Obtain ranking from DB
 function ranking (res) {
-  
+
   DBpool.getConnection(function (err, conn) {
     if (err) {
       errorDeliver(res, 'Error on DB connection: ' + err);
       return;
     }
-    
+
     conn.query('SELECT users.name as name, ranking.shots as shots FROM ranking INNER JOIN users ON ranking.user = users.user_id ORDER BY ranking.shots, ranking.created_at LIMIT 10', function (err, rows) {
       if (err) {
         errorDeliver(res, 'Error on query the DB: ' + err);
         return;
       }
-      
+
       conn.release();
-      
+
       result = { ranking: rows };
       contentDeliver(res, result);
     });      
@@ -87,14 +87,14 @@ function ranking (res) {
 
 // Register/Login into senkan
 function register (res, params) {
-  
+
   // Must check credential's format first
   var valCredentials = paramsValidator.credentials(params.name, params.pass);
   if (valCredentials !== undefined) {
     contentDeliver(res, { error: valCredentials });
     return;
   }
-  
+
   // Parameters have the right format, so try to register/login
   var name = params.name;
   var password = params.pass;
@@ -104,7 +104,7 @@ function register (res, params) {
       errorDeliver(res, 'Error on DB connection: ' + err);
       return;
     }
-    
+
     conn.beginTransaction(function (err) {
       if (err) {
         errorDeliver(res, 'Error on starting DB transaction: ' + err);
@@ -128,7 +128,7 @@ function register (res, params) {
               return;
             }
 
-            bcrypt.hash(password, salt, function (err, passwordHash) {
+            bcrypt.hash(password, salt, null, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 conn.rollback(function() { throw err; });
@@ -142,7 +142,7 @@ function register (res, params) {
                   conn.rollback(function() { throw err; });
                   return;
                 } 
-                
+
                 conn.commit(function (err) {
                   if (err) {
                     errorDeliver(res, 'Error committing the DB transaction: ' + err);
@@ -151,7 +151,7 @@ function register (res, params) {
                   }         
 
                   conn.release();
-                  
+
                   console.log('New user!');
                   contentDeliver(res, '');
                 });
@@ -163,7 +163,7 @@ function register (res, params) {
 
           var passwordHashOfficial = rows[0].password;
           var salt = rows[0].salt;
-          
+
           conn.commit(function (err) {
             if (err) {
               errorDeliver(res, 'Error committing the DB transaction: ' + err);
@@ -172,33 +172,26 @@ function register (res, params) {
             }         
 
             conn.release();
-            
+
             // Hash password sent by user
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 return;
               }        
-              
+
               // Compare passwords
               if (passwordHash === passwordHashOfficial)
                 contentDeliver(res, '');
               else
                 contentDeliver(res, {error: 'User ' + name + ' registered with a different password'});
-              
+
             });
           });
         }
       });
     });          
   });
-
-
-
-  
-  var result = ''; //register(name, password);
-  res.end(JSON.stringify(result));
-  
 }
 
 
