@@ -105,13 +105,13 @@ function ranking (res) {
 
 
 // Register/Login into senkan
-function authenticate (res, name, password) {
+function authenticate (res, name, password, callback) {
 
   // Must check credential's format first
   var valCredentials = paramsValidator.credentials(name, password);
   if (valCredentials !== undefined) {
     contentDeliver(res, { error: valCredentials });
-    return false;
+    return callback(false);
   }
 
   // Parameters have the right format, so try to register/login
@@ -119,20 +119,20 @@ function authenticate (res, name, password) {
   DBpool.getConnection(function (err, conn) {
     if (err) {
       errorDeliver(res, 'Error on DB connection: ' + err);
-      return false;
+      return callback(false);
     }
 
     conn.beginTransaction(function (err) {
       if (err) {
         errorDeliver(res, 'Error on starting DB transaction: ' + err);
-        return false;
+        return callback(false);
       }  
 
       conn.query('SELECT password, salt FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
         if (err) {
           errorDeliver(res, 'Error on query the DB: ' + err);
           conn.rollback(function() { throw err; });
-          return false;
+          return callback(false);
         }  
 
         if (rows.length === 0) { // Register
@@ -142,14 +142,14 @@ function authenticate (res, name, password) {
             if (err) {
               errorDeliver(res, 'Error generating salt: ' + err);
               conn.rollback(function() { throw err; });
-              return false;
+              return callback(false);
             }
 
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 conn.rollback(function() { throw err; });
-                return false;
+                return callback(false);
               }
 
               // Insert user
@@ -157,20 +157,20 @@ function authenticate (res, name, password) {
                 if (err) {
                   errorDeliver(res, 'Error on query the DB: ' + err);
                   conn.rollback(function() { throw err; });
-                  return false;
+                  return callback(false);
                 } 
 
                 conn.commit(function (err) {
                   if (err) {
                     errorDeliver(res, 'Error committing the DB transaction: ' + err);
                     conn.rollback(function() { throw err; });
-                    return false;
+                    return callback(false);
                   }         
 
                   conn.release();
 
                   console.log('New user: ' + name);
-                  return true;
+                  return callback(true);
                 });
               });              
             });
@@ -185,7 +185,7 @@ function authenticate (res, name, password) {
             if (err) {
               errorDeliver(res, 'Error committing the DB transaction: ' + err);
               conn.rollback(function() { throw err; });
-              return false;
+              return callback(false);
             }         
 
             conn.release();
@@ -194,15 +194,15 @@ function authenticate (res, name, password) {
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
-                return false;
+                return callback(false);
               }        
 
               // Compare passwords
               if (passwordHash === passwordHashOfficial)
-                return true;
+                return callback(true);
               else{
                 contentDeliver(res, {error: 'User ' + name + ' registered with a different password'});
-                return false;
+                return callback(false);
               }
               
             });
@@ -216,29 +216,34 @@ function authenticate (res, name, password) {
 
 // Deal with register/login (before entering a game)
 function register (res, params) {
-  if (authenticate(res, params.name, params.pass))
-    contentDeliver(res, {});
+  authenticate(res, params.name, params.pass, function (resAuth) {
+    if (resAuth)
+      contentDeliver(res, {});
+  });
 }
 
 
 // Join the player to the game (may need to create a new game)
 function join (res, params) {
 
-  if (!authenticate(res, params.name, params.pass))
-    return;
-  
-  var valBoard = paramsValidator.board(params.board);
-  if (valBoard !== undefined) {
-    contentDeliver(res, { error: valBoard });
-    return false;
-  }
+  authenticate(res, params.name, params.pass, function (resAuth) {
+    if (!resAuth)
+      return;
 
-  var name = params.name;
-  var password = params.pass;
-  var board = params.board;
+    var valBoard = paramsValidator.board(params.board);
+    if (valBoard !== undefined) {
+      contentDeliver(res, { error: valBoard });
+      return false;
+    }
 
-  var game_info = game.create(board);
-  contentDeliver(res, { game: game_info.id, key: game_info.key });  
+    var name = params.name;
+    var password = params.pass;
+    var board = params.board;
+
+    var game_info = game.create(board);
+    contentDeliver(res, { game: game_info.id, key: game_info.key });  
+    
+  });
 };
 
 
