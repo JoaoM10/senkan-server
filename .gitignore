@@ -1,3 +1,6 @@
 
+*.mwb
+*.bak
+*.sql
 *.log
 node_modules

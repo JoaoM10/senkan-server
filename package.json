@@ -14,14 +14,16 @@
     "connect-route": ">= 0.1.4",
     "body-parser": ">= 1.10.1",
     "morgan": ">= 1.5.1",
-    "mysql": ">= 2.5.4"
+    "mysql": ">= 2.5.4",
+    "validator": "3.27.0"
   },
   "devDependencies": {
     "connect": ">= 3.3.3",
     "connect-route": ">= 0.1.4",
     "body-parser": ">= 1.10.1",
     "morgan": ">= 1.5.1",
-    "mysql": ">= 2.5.4"
+    "mysql": ">= 2.5.4",
+    "validator": "3.27.0"
   },
   "keywords": ["senkan", "senkan server"],
   "repository": "git://github.com/JoaoM10/senkan-server",
