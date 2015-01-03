@@ -1,4 +1,5 @@
 var validator = require('validator');
+var _ = require('underscore');
 
 
 // Validate credentials

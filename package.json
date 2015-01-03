@@ -16,7 +16,8 @@
     "morgan": ">= 1.5.1",
     "mysql": ">= 2.5.4",
     "validator": "3.27.0",
-    "bcrypt": "0.8.0"
+    "bcrypt": "0.8.0",
+    "underscore": "1.7.0"
   },
   "devDependencies": {
     "connect": ">= 3.3.3",
@@ -25,7 +26,8 @@
     "morgan": ">= 1.5.1",
     "mysql": ">= 2.5.4",
     "validator": "3.27.0",
-    "bcrypt": "0.8.0"
+    "bcrypt": "0.8.0",
+    "underscore": "1.7.0"
   },
   "keywords": ["senkan", "senkan server"],
   "repository": "git://github.com/JoaoM10/senkan-server",
