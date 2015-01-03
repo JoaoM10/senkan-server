@@ -18,6 +18,9 @@ if(process.argv.length < 3) {
 var TCPport = Number(process.argv[2]);
 
 
+var gamesWaiting = []; // Games waiting for second player
+
+
 // Create pool of connections do MySQL DB
 var DBpool = mysql.createPool({
   host: 'localhost',
@@ -240,8 +243,13 @@ function join (res, params) {
     var password = params.pass;
     var board = params.board;
 
-    var game_info = game(res, board);
-    contentDeliver(res, { game: game_info.id, key: game_info.key });  
+    var gameInfo = gamesWaiting.pop();
+    if (gameInfo === undefined) {
+      gameInfo = game(res, board);
+      gamesWaiting.push(gameInfo);
+    }
+      
+    contentDeliver(res, { game: gameInfo.id, key: gameInfo.key });  
     
   });
 };
