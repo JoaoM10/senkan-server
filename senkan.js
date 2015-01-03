@@ -121,14 +121,14 @@ function register (res, params) {
         if (rows.length === 0) { // Register
 
           // Generate salt and hash password
-          bcrypt.genSalt(42, function (err, salt) {
+          bcrypt.genSalt(10, function (err, salt) {
             if (err) {
               errorDeliver(res, 'Error generating salt: ' + err);
               conn.rollback(function() { throw err; });
               return;
             }
 
-            bcrypt.hash(password, salt, null, function (err, passwordHash) {
+            bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 conn.rollback(function() { throw err; });
@@ -192,7 +192,7 @@ function register (res, params) {
       });
     });          
   });
-}
+};
 
 
 // Responsible for answering server errors
@@ -200,11 +200,11 @@ function errorDeliver (res, msg) {
   console.log(msg);
   res.writeHeader(500, {});
   res.end();
-}
+};
 
 
 // Responsible for answering well performed requests
 function contentDeliver (res, msg) {
   res.writeHeader(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
   res.end(JSON.stringify(msg));
-}
+};
