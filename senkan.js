@@ -6,6 +6,7 @@ var mysql = require('mysql');
 var validator = require('validator');
 var bcrypt = require('bcrypt');
 var paramsValidator = require('./params-validator');
+var game = require('./game');
 
 
 // Receive TCP port where server should listen
@@ -47,6 +48,24 @@ app
     });
 
 
+    // Join a new game
+    router.post('/join', function (req, res, next) {
+      join(res, req.body);
+    });
+
+    
+    // Receive new shot on a game
+    router.post('/notify', function (req, res, next) {
+      notify(res, req.body);
+    });
+
+    
+    // A player left the game
+    router.post('/leave', function (req, res, next) {
+      leave(res, req.body);
+    });
+
+    
     // Match other (invalid) functions
     router.post(':unknown', function (req, res, next) {
       contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
@@ -86,36 +105,34 @@ function ranking (res) {
 
 
 // Register/Login into senkan
-function register (res, params) {
+function authenticate (res, name, password) {
 
   // Must check credential's format first
-  var valCredentials = paramsValidator.credentials(params.name, params.pass);
+  var valCredentials = paramsValidator.credentials(name, password);
   if (valCredentials !== undefined) {
     contentDeliver(res, { error: valCredentials });
-    return;
+    return false;
   }
 
   // Parameters have the right format, so try to register/login
-  var name = params.name;
-  var password = params.pass;
 
   DBpool.getConnection(function (err, conn) {
     if (err) {
       errorDeliver(res, 'Error on DB connection: ' + err);
-      return;
+      return false;
     }
 
     conn.beginTransaction(function (err) {
       if (err) {
         errorDeliver(res, 'Error on starting DB transaction: ' + err);
-        return;
+        return false;
       }  
 
       conn.query('SELECT password, salt FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
         if (err) {
           errorDeliver(res, 'Error on query the DB: ' + err);
           conn.rollback(function() { throw err; });
-          return;
+          return false;
         }  
 
         if (rows.length === 0) { // Register
@@ -125,14 +142,14 @@ function register (res, params) {
             if (err) {
               errorDeliver(res, 'Error generating salt: ' + err);
               conn.rollback(function() { throw err; });
-              return;
+              return false;
             }
 
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 conn.rollback(function() { throw err; });
-                return;
+                return false;
               }
 
               // Insert user
@@ -140,20 +157,20 @@ function register (res, params) {
                 if (err) {
                   errorDeliver(res, 'Error on query the DB: ' + err);
                   conn.rollback(function() { throw err; });
-                  return;
+                  return false;
                 } 
 
                 conn.commit(function (err) {
                   if (err) {
                     errorDeliver(res, 'Error committing the DB transaction: ' + err);
                     conn.rollback(function() { throw err; });
-                    return;
+                    return false;
                   }         
 
                   conn.release();
 
                   console.log('New user: ' + name);
-                  contentDeliver(res, {});
+                  return true;
                 });
               });              
             });
@@ -168,7 +185,7 @@ function register (res, params) {
             if (err) {
               errorDeliver(res, 'Error committing the DB transaction: ' + err);
               conn.rollback(function() { throw err; });
-              return;
+              return false;
             }         
 
             conn.release();
@@ -177,21 +194,61 @@ function register (res, params) {
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
-                return;
+                return false;
               }        
 
               // Compare passwords
               if (passwordHash === passwordHashOfficial)
-                contentDeliver(res, {});
-              else
+                return true;
+              else{
                 contentDeliver(res, {error: 'User ' + name + ' registered with a different password'});
-
+                return false;
+              }
+              
             });
           });
         }
       });
     });          
   });
+};
+
+
+// Deal with register/login (before entering a game)
+function register (res, params) {
+  if (authenticate(res, params.name, params.pass))
+    contentDeliver(res, {});
+}
+
+
+// Join the player to the game (may need to create a new game)
+function join (res, params) {
+
+  if (!authenticate(res, params.name, params.pass))
+    return;
+  
+  var valBoard = paramsValidator.board(params.board);
+  if (valBoard !== undefined) {
+    contentDeliver(res, { error: valBoard });
+    return false;
+  }
+
+  var name = params.name;
+  var password = params.pass;
+  var board = params.board;
+
+  var game_info = game.create(board);
+  contentDeliver(res, { game: game_info.id, key: game_info.key });  
+};
+
+
+// Receive a shot on a game
+function notify (res, params) {
+};
+
+
+// A player left the game
+function leave (res, params) {
 };
 
 
