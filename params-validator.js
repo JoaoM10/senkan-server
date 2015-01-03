@@ -22,12 +22,12 @@ exports.credentials = function (name, password) {
 // Validate board
 exports.board = function (board) {
 
-  var check = (board.length !== 10);
+  var check = (board.length === 10);
   
   for (var i = 0; i < 10; i ++) {
-    check = check && (board[i].length !== 10);
+    check = check && (board[i].length === 10);
     for (var j = 0; j < 10; j ++)
-      check = check && (board[i][j] !== true && board[i][j] !== false);
+      check = check && (board[i][j] === true || board[i][j] === false);
   }
   
   if (check) {
