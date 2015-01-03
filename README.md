@@ -7,7 +7,7 @@ Node.js server for Senkan.
 
 Run this command in the main directory of the server:
 ```
-$ node index.js
+$ node senkan <port>
 ```
 
 ## License
