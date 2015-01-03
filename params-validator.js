@@ -34,20 +34,20 @@ exports.board = function (board) {
     var vis = createVirtualBoard();
     var ships = [];
 
-    for (var i = 0; i < 10; i ++) {
-      for (var j = 0; j < 10; j ++) {
-        if (board[i][j] && !vis[i][j]) {
+    for (var i = 1; i <= 10; i ++) {
+      for (var j = 1; j <= 10; j ++) {
+        if (board[i - 1][j - 1] && !vis[i][j]) {
           var size = 1;
           vis[i][j] = true;
           
-          if (board[i][j + 1]) { // placed horizontally
-            while (board[i][j + size]) {
+          if (board[i - 1][j - 1 + 1]) { // placed horizontally
+            while (board[i - 1][j - 1 + size]) {
               vis[i][j + size] = true;
               size ++;
             }
           }
           else { // placed vertically
-            while (board[i + size][j]) {
+            while (board[i - 1 + size][j - 1]) {
               vis[i + size][j] = true;
               size ++;
             }
