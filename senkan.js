@@ -352,9 +352,7 @@ function closeGame (gameID) {
 // Player left the game
 function playerLeft (gameId, name) {
 
-  var looser = 0;
-  if (games[gameId].getPlayerInfo(0).name !== name)
-    looser = 1;
+  var looser = games[gameId].getPlayerId(name);
   var winner = 1 - looser;
   
   // Send left advice for opponent
@@ -370,7 +368,7 @@ function handleUpdate (req, res, params) {
   sseInit(req, res);
   
   var name = params.name;
-  var gameId = params.game;
+  var gameId = Number(params.game);
   var gameKey = params.key;
   
   // Verify parameters received
@@ -387,19 +385,10 @@ function handleUpdate (req, res, params) {
   });
   
   // Save connection on game
-  if (games[gameId].getPlayerInfo(0).name === name)
-    games[gameId].setPlayerConnection(0, res);
-  else
-    games[gameId].setPlayerConnection(1, res);
-
-  // Update game state
-  if (games[gameId].state === 'ready')
-    games[gameId].state = 'set';
-  else
-    games[gameId].state = 'go';
+  games[gameId].setPlayerConnection(games[gameId].getPlayerId(name), res);
 
   // If both players already joined the game, notify about opponent and turn
-  if(games[gameId].state === 'go') {
+  if(games[gameId].countConnections() === 2) {
     var curTurn = games[gameId].getTurn();
     sseDeliver(games[gameId].getPlayerConnection(0), { opponent: games[gameId].getPlayerInfo(1).name, turn: curTurn});
     sseDeliver(games[gameId].getPlayerConnection(1), { opponent: games[gameId].getPlayerInfo(0).name, turn: curTurn});
@@ -412,7 +401,7 @@ function handleUpdate (req, res, params) {
 function handleNotify (res, params) {
 
   var name = params.name;
-  var gameId = params.game;
+  var gameId = Number(params.game);
   var gameKey = params.key;
   var row = params.row;
   var col = params.col;
@@ -429,9 +418,7 @@ function handleNotify (res, params) {
     return;
   }
   
-  var player = 0;
-  if (games[gameId].getPlayerInfo(0).name !== name)
-    player = 1;
+  var player = games[gameId].getPlayerId(name);
   
   var shotRes = games[gameId].shot(player, row, col);
   if (shotRes === -1) { // repeated shot
@@ -465,7 +452,7 @@ function handleNotify (res, params) {
 function handleLeave (res, params) {
 
   var name = params.name;
-  var gameId = params.game;
+  var gameId = Number(params.game);
   var gameKey = params.key;
   
   // Verify parameters received

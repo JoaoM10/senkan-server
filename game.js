@@ -11,6 +11,7 @@ module.exports = function () {
     players: [],
     turn: getRandomInt(0, 1),
     state: 'waiting',
+    connectionsCounter: 0,
     addPlayer: function (name, board) {
       this.players.push({ name: name,
                           board: board,
@@ -24,6 +25,11 @@ module.exports = function () {
     getPlayerInfo: function (pl) {
       return this.players[pl];
     },
+    getPlayerId: function (name) {
+      if (this.players[0].name === name)
+        return 0;
+      return 1;
+    },
     getTurn: function () {
       return this.players[this.turn].name;
     },
@@ -32,6 +38,10 @@ module.exports = function () {
     },
     setPlayerConnection: function (pl, conn) {
       this.players[pl].connection = conn;
+      this.connectionsCounter ++;
+    },
+    countConnections: function () {
+      return this.connectionsCounter;
     },
     changeTurn: function () {
       this.turn = 1 - this.turn;
