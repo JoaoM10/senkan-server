@@ -19,7 +19,8 @@ var TCPport = Number(process.argv[2]);
 
 
 var gamesWaiting = []; // Games waiting for second player
-
+var gamesPlaying = []; // Games with both players connected
+var playerGame = []; // Game room where players are
 
 // Create pool of connections do MySQL DB
 var DBpool = mysql.createPool({
@@ -242,18 +243,30 @@ function join (res, params) {
     var name = params.name;
     var password = params.pass;
     var board = params.board;
-
+    var gameKey;
+    
     var gameInfo = gamesWaiting.pop();
     if (gameInfo === undefined) { // No players waiting, create new game
       gameInfo = game();
       gameInfo.addPlayer(name, board);
+      playerGame[name] = gameInfo.id;
+      gameKey = gameInfo.getPlayerInfo(0).key;
+      gamesWaiting.push(gameInfo);
+      console.log('Created new game: ' + gameInfo.id);
+    }
+    else if (gameInfo.getPlayerInfo(0).name !== name) { // Don't allow games with himself
+      gameInfo.addPlayer(name, board);
+      playerGame[name] = gameInfo.id;
+      gameKey = gameInfo.getPlayerInfo(1).key;
+      gamesPlaying[gameInfo.id] = gameInfo;
+      console.log('Game ' + gameInfo.id + 'has both players now!');
+    }
+    else {
+      gameKey = gameInfo.getPlayerInfo(0).key;
       gamesWaiting.push(gameInfo);
     }
-    else if (gameInfo.getFirstPlayer().name !== name) { // Don't allow games with himself
-      gameInfo.addPlayer(name, board);
-    }
       
-    contentDeliver(res, { game: gameInfo.id, key: gameInfo.key });  
+    contentDeliver(res, { game: gameInfo.id, key: gameKey });  
     
   });
 };
@@ -266,6 +279,13 @@ function notify (res, params) {
 
 // A player left the game
 function leave (res, params) {
+
+  // check name, game and key...
+  
+  // check that the game is on waiting list...
+
+  // left game now...
+
 };
 
 

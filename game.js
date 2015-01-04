@@ -7,13 +7,12 @@ var gameCnt = 1;
 module.exports = function () {
   return {
     id: gameCnt ++,
-    key: crypto.randomBytes(32).toString('hex'),
     players: [],
     addPlayer: function (name, board) {
-      this.players.push({ name: name, board: board });
+      this.players.push({ name: name, board: board, key: crypto.randomBytes(32).toString('hex') });
     },
-    getFirstPlayer: function () {
-      return { name: this.players[0] };
+    getPlayerInfo: function (pos) {
+      return this.players[pos];
     }
   };
 };
