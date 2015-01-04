@@ -5,10 +5,15 @@
   "author": "João Ramos <joao.ramos@dcc.fc.up.pt>",
   "contributors": [
     {
+      "name": "João Ramos",
+      "email": "joao.ramos@dcc.fc.up.pt"
+    },
+    {
       "name": "Filipe Figueiredo",
       "email": "up201203559@fc.up.pt"
     }
   ],
+  "license": "MIT",
   "dependencies": {
     "express": ">= 4.10.6",
     "cors": ">= 2.5.2",
