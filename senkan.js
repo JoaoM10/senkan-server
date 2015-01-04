@@ -126,6 +126,36 @@ function handleRanking (res) {
 };    
 
 
+// Update ranking
+function updateRanking (name, shots) {
+  
+  DBpool.getConnection(function (err, conn) {
+    if (err) {
+      console.error('Error on DB connection: ' + err);
+      return;
+    }
+
+    conn.query('SELECT used_id FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
+      if (err) {
+        console.error('Error on query the DB: ' + err);
+        return;
+      }
+
+      var userId = rows[0].user_id;
+      
+      conn.query('INSERT INTO ranking(user, shots) VALUES (?, ?)', [userId, shots], function (err, result) {
+        if (err) {
+          console.error('Error on query the DB: ' + err);
+          return;
+        }
+        
+        conn.release();
+      });      
+    });
+  });
+};
+
+
 // Register/Login user
 function authenticate (res, name, password, callback) {
 
