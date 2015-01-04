@@ -1,7 +1,7 @@
 {
   "name": "senkan-server",
   "description": "Node.js server implementing Senkan REST API",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "João Ramos <joao.ramos@dcc.fc.up.pt>",
   "contributors": [
     {
