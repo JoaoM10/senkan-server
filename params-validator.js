@@ -40,14 +40,17 @@ exports.board = function (board) {
         if (board[i - 1][j - 1] && !vis[i][j]) {
           var size = 1;
           vis[i][j] = true;
-          
-          if (j < 10 && board[i - 1][j - 1 + 1]) { // placed horizontally
+
+          // check orientation
+          if (j < 10 && board[i - 1][j - 1 + 1]) {
+            // horizontally
             while (j - 1 + size < 10 && board[i - 1][j - 1 + size]) {
               vis[i][j + size] = true;
               size ++;
             }
           }
-          else { // placed vertically
+          else {
+            // vertically
             while (i - 1 + size < 10 && board[i - 1 + size][j - 1]) {
               vis[i + size][j] = true;
               size ++;
@@ -89,5 +92,7 @@ exports.coordinates = function (row, col) {
 
 // Check if value is an integer
 function isInt (value) {
-  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
-}
+  return (!isNaN(value) && (function (x) {
+    return ((x | 0) === x);
+  })(parseFloat(value)));
+};

@@ -36,9 +36,9 @@ var app = express();
 
 app.use(cors()); // Enable CORS
 app.use(morgan('combined')); // Logging
-app.use(bodyParser.json()); // for parsing application/json
-app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
-app.use(multer()); // for parsing multipart/form-data
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(multer());
 
 
 // ROUTING --------------------------------
@@ -100,7 +100,6 @@ app.listen(TCPport, function () {
 var games = []; // Save info of all games
 var gamesWaiting = []; // Games (id only) waiting for second player
 var playerGame = []; // Game room where players are
-var gameState = []; // Save the state of the game (waiting, playing, finished)
 
 
 // Obtain ranking from DB and deliver it to the user
@@ -265,7 +264,7 @@ function handleJoin (res, params) {
     var playerKey, gameInfo, gameId;
     
     var gameId = gamesWaiting.pop();
-    while (gameId !== undefined && gameState[gameId] === 'aborted')
+    while (gameId !== undefined && games[gameId].state === 'aborted')
       gameId = gamesWaiting.pop();
     
     if (gameId === undefined) { // No players waiting
@@ -276,7 +275,6 @@ function handleJoin (res, params) {
       playerGame[name] = { gameId: gameInfo.id, key: playerKey };
 
       games[gameInfo.id] = gameInfo;
-      gameState[gameInfo.id] = 'waiting';
       gamesWaiting.push(gameInfo.id);
       
       console.log('Created new game: ' + gameInfo.id);
@@ -284,12 +282,13 @@ function handleJoin (res, params) {
     else {
       gameInfo = games[gameId];
       
-      if (gameInfo.getPlayerInfo(0).name !== name) { // Don't allow games with himself
+      // Don't allow games with himself
+      if (gameInfo.getPlayerInfo(0).name !== name) {
         gameInfo.addPlayer(name, board);
         playerKey = gameInfo.getPlayerInfo(1).key;
         playerGame[name] = { gameId: gameInfo.id, key: playerKey };
 
-        gameState[gameInfo.id] = 'ready';
+        games[gameInfo.id].state = 'ready';
         
         console.log('Game ' + gameInfo.id + 'has both players now!');
       }
@@ -312,14 +311,11 @@ function closeGame (gameID) {
   playerGame[games[gameId].getPlayerInfo(0).name] = undefined;
   playerGame[games[gameId].getPlayerInfo(1).name] = undefined;
 
-  // Close connections
+  // Close players connections
   games[gameId].getPlayerConnection(0).end();
   games[gameId].getPlayerConnection(1).end();
 
-  // Close game
-  games[gameId] = undefined;
-  gameState[gameId] = undefined;
-  
+  games[gameId] = undefined;  
 };
 
 
@@ -367,13 +363,13 @@ function handleUpdate (req, res, params) {
     games[gameId].setPlayerConnection(1, res);
 
   // Update game state
-  if (gameState[gameId] === 'ready')
-    gameState[gameId] = 'set';
+  if (games[gameId].state === 'ready')
+    games[gameId].state = 'set';
   else
-    gameState[gameId] = 'go';
+    games[gameId].state = 'go';
 
   // If both players already joined the game, notify about opponent and turn
-  if(gameState[gameId] === 'go') {
+  if(games[gameId].state === 'go') {
     var curTurn = games[gameId].getTurn();
     sseDeliver(games[gameId].getPlayerConnection(0), { opponent: games[gameId].getPlayerInfo(1).name, turn: curTurn});
     sseDeliver(games[gameId].getPlayerConnection(1), { opponent: games[gameId].getPlayerInfo(0).name, turn: curTurn});
@@ -398,14 +394,40 @@ function handleNotify (res, params) {
     return;
   }
 
-  // check turn
-
-  // check shot
-
-  // notify opponents of the move
-
-  // check winner
+  if (games[gameId].getTurn() !== name) {
+    contentDeliver(res, { error: 'Not your turn.' });
+    return;
+  }
   
+  var player = 0;
+  if (games[gameId].getPlayerInfo(0).name !== name)
+    player = 1;
+  
+  var shotRes = games[gameId].shot(player, row, col);
+  if (shotRes === -1) { // repeated shot
+    contentDeliver(res, { error: 'You already made a shot in this position.' });
+    return;
+  }
+
+  var move = { name: name, row: row, col: col, hit: (shotRes === 1) };
+  var result;
+
+  // Check for victory
+  if (games[gameId].checkWin(player)) {
+    result = { move: move, winner: name };
+    updateRanking(name, games[gameId].countPlayerShots(player));
+    closeGame(gameId);
+  }
+  else {
+    games[gameId].changeTurn();
+    result = { move: move, turn: games[gameId].getTurn() };
+  }
+
+  // Send move to both players
+  sseDeliver(games[gameId].getPlayerConnection(0), result);
+  sseDeliver(games[gameId].getPlayerConnection(1), result);
+  
+  contentDeliver(res, {});
 };
 
 
@@ -424,13 +446,13 @@ function handleLeave (res, params) {
   }
 
   // Check if the game is on waiting list (cannot leave after the game started)
-  if (gameState[gameId] !== 'waiting') {
+  if (games[gameId].state !== 'waiting') {
     contentDeliver(res, { error: 'Cannot leave the game!' });
     return;
   }
   
-  // Now he can leave the game
-  gameState[gameId] = 'aborted';
+  // Now the player can leave the game
+  games[gameId].state = 'aborted';
   games[gameId] = undefined;
   playerGame[name] = undefined;
 
