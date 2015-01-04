@@ -72,7 +72,7 @@ app.post('*', function (req, res) { // Default (unknown function)
 // GET ----------------------
 
 app.get('/update', function (req, res) {
-  handleUpdate(res, req.query);
+  handleUpdate(req, res, req.query);
 });
 
 app.get('*', function (req, res) { // Default (unknown function)
@@ -243,7 +243,7 @@ function handleRegister (res, params) {
     if (resAuth)
       contentDeliver(res, {});
   });
-}
+};
 
 
 // Join the player to the game (may need to create a new one)
@@ -305,13 +305,107 @@ function handleJoin (res, params) {
 };
 
 
+// Close the game
+function closeGame (gameID) {
+
+  // Update player state
+  playerGame[games[gameId].getPlayerInfo(0).name] = undefined;
+  playerGame[games[gameId].getPlayerInfo(1).name] = undefined;
+
+  // Close connections
+  games[gameId].getPlayerConnection(0).end();
+  games[gameId].getPlayerConnection(1).end();
+
+  // Close game
+  games[gameId] = undefined;
+  gameState[gameId] = undefined;
+  
+};
+
+
+// Player left the game
+function playerLeft (gameId, name) {
+
+  var looser = 0;
+  if (games[gameId].getPlayerInfo(0).name !== name)
+    looser = 1;
+  var winner = 1 - looser;
+  
+  // Send left advice for opponent
+  sseDeliver(games[gameId].getPlayerConnection(winner), { left: name });
+  
+  closeGame(gameId);
+};
+
+
 // Player connected to a game (SSE)
-function handleUpdate (res, params) {
+function handleUpdate (req, res, params) {
+
+  sseInit(req, res);
+  
+  var name = params.name;
+  var gameId = params.game;
+  var gameKey = params.key;
+  
+  // Verify parameters received
+  var playerInfo = playerGame[name];
+  if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey) {
+    sseDeliver(res, { error: 'Invalid update request.' });
+    res.end();
+    return;
+  }
+
+  // If player closes his connection, end the game
+  req.on('close', function () {
+    playerLeft(gameId, name);
+  });
+  
+  // Save connection on game
+  if (games[gameId].getPlayerInfo(0).name === name)
+    games[gameId].setPlayerConnection(0, res);
+  else
+    games[gameId].setPlayerConnection(1, res);
+
+  // Update game state
+  if (gameState[gameId] === 'ready')
+    gameState[gameId] = 'set';
+  else
+    gameState[gameId] = 'go';
+
+  // If both players already joined the game, notify about opponent and turn
+  if(gameState[gameId] === 'go') {
+    var curTurn = games[gameId].getTurn();
+    sseDeliver(games[gameId].getPlayerConnection(0), { opponent: games[gameId].getPlayerInfo(1).name, turn: curTurn});
+    sseDeliver(games[gameId].getPlayerConnection(1), { opponent: games[gameId].getPlayerInfo(0).name, turn: curTurn});
+  }
+
 };
 
 
 // Receive a shot on a game
 function handleNotify (res, params) {
+
+  var name = params.name;
+  var gameId = params.game;
+  var gameKey = params.key;
+  var row = params.row;
+  var col = params.col;
+  
+  // Verify parameters received
+  var playerInfo = playerGame[name];
+  if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey || !paramsValidator.coordinates(row, col)) {
+    contentDeliver(res, { error: 'Invalid notify request.' });
+    return;
+  }
+
+  // check turn
+
+  // check shot
+
+  // notify opponents of the move
+
+  // check winner
+  
 };
 
 
@@ -354,6 +448,28 @@ function errorDeliver (res, msg) {
 
 // Responsible for answering well performed requests
 function contentDeliver (res, msg) {
-  res.writeHeader(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+  res.writeHeader(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*'
+  });
   res.end(JSON.stringify(msg));
+};
+
+
+// Responsible for initialize SSE connection
+function sseInit (req, res) {
+  req.socket.setTimeout(Infinity);
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  res.write('\n');
+};
+
+
+// Responsible for sending SSE messages
+function sseDeliver (res, msg) {
+  res.write('data: ' + JSON.stringify(msg) + '\n\n');
 };

@@ -69,3 +69,25 @@ exports.board = function (board) {
   
   return undefined;
 };
+
+
+// Validate board coordinates
+exports.coordinates = function (row, col) {
+
+  if (!isInt(row) || !isInt(col))
+    return false;
+  
+  row = Number(row);
+  col = Number(col);
+  
+  if (row < 1 || row > 10 || col < 1 || col > 10)
+    return false;    
+  
+  return true;
+};
+
+
+// Check if value is an integer
+function isInt (value) {
+  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
+}

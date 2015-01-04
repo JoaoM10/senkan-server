@@ -15,11 +15,21 @@ module.exports = function () {
                           board: board,
                           key: crypto.randomBytes(32).toString('hex'),
                           shots: vboard.generateVirtualBoard(),
-                          helth: 17
+                          helth: 17,
+                          connection: undefined
                         });
     },
     getPlayerInfo: function (pos) {
       return this.players[pos];
+    },
+    getTurn: function () {
+      return this.players[this.turn].name;
+    },
+    getPlayerConnection: function (pos) {
+      return this.players[pos].connection;
+    },
+    setPlayerConnection: function (pos, conn) {
+      this.players[pos].connection = conn;
     },
   };
 };
