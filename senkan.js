@@ -82,6 +82,13 @@ app.get('*', function (req, res) { // Default (unknown function)
 // END OF ROUTING -------------------------
 
 
+// Error handling
+app.use(function (err, req, res, next) {
+  errorDeliver(res, 'Error: ' + err);
+  next();
+});
+
+
 app.listen(TCPport, function () {
   console.log('Senkan server listening on port ' + TCPport);
 });
@@ -339,7 +346,7 @@ function handleLeave (res, params) {
 
 // Responsible for answering server errors
 function errorDeliver (res, msg) {
-  console.log(msg);
+  console.error(msg);
   res.writeHeader(500, {});
   res.end();
 };
