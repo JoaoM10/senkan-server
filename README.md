@@ -25,6 +25,11 @@ $ node senkan <port>
 
 Note: `npm update` is only need on the first time.
 
+You can also use `forever` to relauch the server if it stops unexpectedly:
+```
+$ forever start -s -l logs.log -o logs.out -e logs.err senkan.js
+```
+
 ## License
 
 This code is free to use under the terms of the MIT license.
