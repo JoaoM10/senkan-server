@@ -1,5 +1,8 @@
 
-// Generate a virtual board (with margins)
+/**
+ * Generate a virtual board
+ * With margins on all sides
+ */
 exports.generateVirtualBoard = function () {
   var newBoard = [];
   for (var i = 0; i < 12; i ++) {

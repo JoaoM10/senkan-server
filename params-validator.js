@@ -2,7 +2,10 @@ var validator = require('validator');
 var _ = require('underscore');
 var vboard = require('./vboard');
 
-// Validate credentials
+
+/**
+ * Validate credentials (name and password)
+ */
 exports.credentials = function (name, password) {
 
   if (name === undefined || name.length === 0)
@@ -19,7 +22,9 @@ exports.credentials = function (name, password) {
 };
 
 
-// Validate board (misses adjacent cells)
+/**
+ * Validate board
+ */
 exports.board = function (board) {
 
   // Verify dimensions
@@ -74,7 +79,10 @@ exports.board = function (board) {
 };
 
 
-// Mark position (and its adjacent cells)
+/**
+ * Mark position on board as visited
+ * Also mark the adjacent cells
+ */
 function markVisited (board, row, col) {
   for (var i = -1; i <= 1; i ++)
     for (var j = -1; j <= 1; j ++)
@@ -82,9 +90,10 @@ function markVisited (board, row, col) {
 };
 
 
-// Validate board coordinates
+/**
+ * Validate board coordinates (row and column)
+ */
 exports.coordinates = function (row, col) {
-
   if (!isInt(row) || !isInt(col))
     return false;
   
@@ -98,7 +107,9 @@ exports.coordinates = function (row, col) {
 };
 
 
-// Check if value is an integer
+/**
+ * Validate integer number
+ */
 function isInt (value) {
   return (!isNaN(value) && (function (x) {
     return ((x | 0) === x);

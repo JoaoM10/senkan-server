@@ -2,9 +2,12 @@ var crypto = require('crypto');
 var vboard = require('./vboard');
 
 
-var gameCnt = 1;
+var gameCnt = 1; // Use a counter to determine new game id
 
 
+/**
+ * Game Class
+ */
 module.exports = function () {
   return {
     id: gameCnt ++,
@@ -73,6 +76,10 @@ module.exports = function () {
   };
 };
 
+
+/**
+ * Get random integer between low and high (inclusive)
+ */
 function getRandomInt (low, high) {
   return Math.floor(Math.random() * (high - low + 1) + low);
 };

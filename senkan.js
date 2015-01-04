@@ -22,12 +22,12 @@ if(process.argv.length < 3) {
 var TCPport = Number(process.argv[2]);
 
 
-// Create pool of connections do MySQL DB
+// Create pool of connections to MySQL DB
 var DBpool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'senkan',
+  host:            'localhost',
+  user:            'root',
+  password:        '',
+  database:        'senkan',
   connectionLimit: 73
 });
 
@@ -35,7 +35,7 @@ var DBpool = mysql.createPool({
 var app = express();
 
 app.use(cors()); // Enable CORS
-app.use(morgan('combined')); // Logging
+app.use(morgan('combined')); // Enable logs
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(multer());
@@ -98,11 +98,13 @@ app.listen(TCPport, function () {
 
 
 var games = []; // Save info of all games
-var gamesWaiting = []; // Games (id only) waiting for second player
-var playerGame = []; // Game room where players are
+var gamesWaiting = []; // Games (id only) waiting for the second player
+var playerGame = []; // Game room where players are (if any)
 
 
-// Obtain ranking from DB and deliver it to the user
+/**
+ * Handle ranking - Get ranking and deliver it to the user
+ */
 function handleRanking (res) {
 
   DBpool.getConnection(function (err, conn) {
@@ -111,7 +113,10 @@ function handleRanking (res) {
       return;
     }
 
-    conn.query('SELECT users.name as name, ranking.shots as shots FROM ranking INNER JOIN users ON ranking.user = users.user_id ORDER BY ranking.shots, ranking.created_at LIMIT 10', function (err, rows) {
+    var query = 'SELECT users.name as name, ranking.shots as shots';
+    query += ' FROM ranking INNER JOIN users ON ranking.user = users.user_id';
+    query += ' ORDER BY ranking.shots, ranking.created_at LIMIT 10';
+    conn.query(query, function (err, rows) {
       if (err) {
         errorDeliver(res, 'Error on query the DB: ' + err);
         return;
@@ -126,7 +131,9 @@ function handleRanking (res) {
 };    
 
 
-// Update ranking
+/**
+ * Update ranking
+ */
 function updateRanking (name, shots) {
   
   DBpool.getConnection(function (err, conn) {
@@ -135,7 +142,8 @@ function updateRanking (name, shots) {
       return;
     }
 
-    conn.query('SELECT user_id FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
+    var queryId = 'SELECT user_id FROM users WHERE name = ? LIMIT 1';
+    conn.query(queryId, [name], function (err, rows) {
       if (err) {
         console.error('Error on query the DB: ' + err);
         return;
@@ -143,7 +151,8 @@ function updateRanking (name, shots) {
 
       var userId = rows[0].user_id;
       
-      conn.query('INSERT INTO ranking(user, shots) VALUES (?, ?)', [userId, shots], function (err, result) {
+      var queryIns = 'INSERT INTO ranking(user, shots) VALUES (?, ?)';
+      conn.query(queryIns, [userId, shots], function (err, result) {
         if (err) {
           console.error('Error on query the DB: ' + err);
           return;
@@ -156,7 +165,9 @@ function updateRanking (name, shots) {
 };
 
 
-// Register/Login user
+/**
+ * Register/Login
+ */
 function authenticate (res, name, password, callback) {
 
   // Must check credential's format first
@@ -166,7 +177,6 @@ function authenticate (res, name, password, callback) {
     return callback(false);
   }
 
-  // Parameters have the right format, so try to register/login
 
   DBpool.getConnection(function (err, conn) {
     if (err) {
@@ -180,7 +190,8 @@ function authenticate (res, name, password, callback) {
         return callback(false);
       }  
 
-      conn.query('SELECT password, salt FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
+      var queryG = 'SELECT password, salt FROM users WHERE name = ? LIMIT 1';
+      conn.query(queryG, [name], function (err, rows) {
         if (err) {
           errorDeliver(res, 'Error on query the DB: ' + err);
           conn.rollback(function() { throw err; });
@@ -189,7 +200,7 @@ function authenticate (res, name, password, callback) {
 
         if (rows.length === 0) { // Register
 
-          // Generate salt and hash password
+          // Generate salt and hash password (Blowfish encryption)
           bcrypt.genSalt(10, function (err, salt) {
             if (err) {
               errorDeliver(res, 'Error generating salt: ' + err);
@@ -204,8 +215,8 @@ function authenticate (res, name, password, callback) {
                 return callback(false);
               }
 
-              // Insert user
-              conn.query('INSERT INTO users(name, password, salt) VALUES (?, ?, ?)', [name, passwordHash, salt], function (err, result) {
+              var queryI = 'INSERT INTO users(name, password, salt) VALUES (?, ?, ?)';
+              conn.query(queryI, [name, passwordHash, salt], function (err, result) {
                 if (err) {
                   errorDeliver(res, 'Error on query the DB: ' + err);
                   conn.rollback(function() { throw err; });
@@ -241,18 +252,19 @@ function authenticate (res, name, password, callback) {
 
             conn.release();
 
-            // Hash password sent by user
+            // Hash password sent by user to allow comparison
             bcrypt.hash(password, salt, function (err, passwordHash) {
               if (err) {
                 errorDeliver(res, 'Error hashing password: ' + err);
                 return callback(false);
               }        
 
-              // Compare passwords
               if (passwordHash === passwordHashOfficial)
                 return callback(true);
               else{
-                contentDeliver(res, {error: 'User ' + name + ' registered with a different password'});
+                var errorPw = 'User ' + name;
+                errorPw += ' registered with a different password';
+                contentDeliver(res, {error: errorPw});
                 return callback(false);
               }
               
@@ -265,7 +277,9 @@ function authenticate (res, name, password, callback) {
 };
 
 
-// Deal with register/login (before entering a game)
+/**
+ * Handle Register/Login
+ */
 function handleRegister (res, params) {
   authenticate(res, params.name, params.pass, function (resAuth) {
     if (resAuth)
@@ -274,9 +288,12 @@ function handleRegister (res, params) {
 };
 
 
-// Join the player to the game (may need to create a new one)
+/**
+ * Handle join - Join the player to the game (may need to create a new room)
+ */
 function handleJoin (res, params) {
 
+  // Verify all parameters received
   authenticate(res, params.name, params.pass, function (resAuth) {
     if (!resAuth)
       return;
@@ -287,16 +304,20 @@ function handleJoin (res, params) {
       return false;
     }
 
+    // Join game
+
     var name = params.name;
     var password = params.pass;
     var board = params.board;
     var playerKey, gameInfo, gameId;
     
+    // Check for any game on waiting
+    // (lazy propagation removal of aborted games)
     var gameId = gamesWaiting.pop();
     while (gameId !== undefined && games[gameId].state === 'aborted')
       gameId = gamesWaiting.pop();
     
-    if (gameId === undefined) { // No players waiting
+    if (gameId === undefined) { // No games on waiting, create a new game
       gameInfo = game();
 
       gameInfo.addPlayer(name, board);
@@ -318,21 +339,21 @@ function handleJoin (res, params) {
         games[gameInfo.id].state = 'ready';
       }
       else {
+        // Player was already on the waiting list
         playerKey = gameInfo.getPlayerInfo(0).key;
         gamesWaiting.push(gameInfo.id);
       }
     }
-      
-    contentDeliver(res, { game: gameInfo.id, key: playerKey });  
     
+    contentDeliver(res, { game: gameInfo.id, key: playerKey });  
   });
 };
 
 
-// Close the game
+/**
+ * Close game and update players state
+ */
 function closeGame (gameId) {
-
-  // Update player state
   playerGame[games[gameId].getPlayerInfo(0).name] = undefined;
   playerGame[games[gameId].getPlayerInfo(1).name] = undefined;
 
@@ -340,29 +361,32 @@ function closeGame (gameId) {
 };
 
 
-// Player left the game
+/**
+ * Player left the game
+ * Send notification to his opponent and close the game
+ */
 function playerLeft (gameId, name) {
-
   var looser = games[gameId].getPlayerId(name);
   var winner = 1 - looser;
   
-  // Send left advice for opponent
   sseDeliver(games[gameId].getPlayerConnection(winner), { left: name });
-  
   closeGame(gameId);
 };
 
 
-// Player connected to a game (SSE)
+/**
+ * Handle update - Using Server Side Events
+ */
 function handleUpdate (req, res, params) {
 
+  // Initialize SSE
   sseInit(req, res);
   
   var name = params.name;
   var gameId = Number(params.game);
   var gameKey = params.key;
   
-  // Verify parameters received
+  // Verify all parameters received
   var playerInfo = playerGame[name];
   if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey) {
     sseDeliver(res, { error: 'Invalid update request.' });
@@ -371,26 +395,35 @@ function handleUpdate (req, res, params) {
   }
 
   /*
-    // If player closes the connection, end the game
-    req.on('close', function () {
-      playerLeft(gameId, name);
-    });
+  // If player closes the connection, end the game
+  req.on('close', function () {
+  playerLeft(gameId, name);
+  });
   */
   
-  // Save connection on game
+  // Save player SSE connection to the game
   games[gameId].setPlayerConnection(games[gameId].getPlayerId(name), res);
 
-  // If both players already joined the game, notify about opponent and turn
+  // If both players already joined the game,
+  // Notify each other about his opponent and turn
+  // Update game state
   if(games[gameId].countConnections() === 2) {
     var curTurn = games[gameId].getTurn();
-    sseDeliver(games[gameId].getPlayerConnection(0), { opponent: games[gameId].getPlayerInfo(1).name, turn: curTurn});
-    sseDeliver(games[gameId].getPlayerConnection(1), { opponent: games[gameId].getPlayerInfo(0).name, turn: curTurn});
-  }
+    
+    var resFs = { opponent: games[gameId].getPlayerInfo(1).name, turn: curTurn };
+    sseDeliver(games[gameId].getPlayerConnection(0), resFs);
 
+    var resSn = { opponent: games[gameId].getPlayerInfo(0).name, turn: curTurn };
+    sseDeliver(games[gameId].getPlayerConnection(1), resSn);
+
+    games[gameId].state = 'playing';
+  }
 };
 
 
-// Receive a shot on a game
+/**
+ * Hangle notify - Receive a shot on a game
+ */
 function handleNotify (res, params) {
 
   var name = params.name;
@@ -399,13 +432,18 @@ function handleNotify (res, params) {
   var row = params.row;
   var col = params.col;
   
-  // Verify parameters received
+  // Verify all parameters received
   var playerInfo = playerGame[name];
-  if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey || !paramsValidator.coordinates(row, col)) {
+  if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey) {
     contentDeliver(res, { error: 'Invalid notify request.' });
     return;
   }
+  else if (!paramsValidator.coordinates(row, col)) {
+    contentDeliver(res, { error: 'Invalid notify request.' });
+    return; 
+  }
 
+  // Verify turn
   if (games[gameId].getTurn() !== name) {
     contentDeliver(res, { error: 'Not your turn.' });
     return;
@@ -413,8 +451,9 @@ function handleNotify (res, params) {
   
   var player = games[gameId].getPlayerId(name);
   
+  // Check if the shot is not repeated and, if not, if it's an hit
   var shotRes = games[gameId].shot(player, row, col);
-  if (shotRes === -1) { // repeated shot
+  if (shotRes === -1) {
     contentDeliver(res, { error: 'You already made a shot in this position.' });
     return;
   }
@@ -422,7 +461,7 @@ function handleNotify (res, params) {
   var move = { name: name, row: row, col: col, hit: (shotRes === 1) };
   var result;
 
-  // Check for victory
+  // Check if player won the game
   if (games[gameId].checkWin(player)) {
     result = { move: move, winner: name };
     updateRanking(name, games[gameId].countPlayerShots(player));
@@ -441,27 +480,30 @@ function handleNotify (res, params) {
 };
 
 
-// Player left a game
+/**
+ * Hangle leave - Player stopped waiting for an opponent
+ */
 function handleLeave (res, params) {
 
   var name = params.name;
   var gameId = Number(params.game);
   var gameKey = params.key;
   
-  // Verify parameters received
+  // Verify all parameters received
   var playerInfo = playerGame[name];
   if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey) {
     contentDeliver(res, { error: 'Invalid leave request.' });
     return;
   }
 
-  // Check if the game is on waiting list (cannot leave after the game started)
+  // Check if the game is on waiting list
+  // Cannot leave if the game has already started
   if (games[gameId].state !== 'waiting') {
     contentDeliver(res, { error: 'Cannot leave the game!' });
     return;
   }
   
-  // Now the player can leave the game
+  // Leave the game and update games and players info
   games[gameId].state = 'aborted';
   games[gameId] = undefined;
   playerGame[name] = undefined;
@@ -470,7 +512,9 @@ function handleLeave (res, params) {
 };
 
 
-// Responsible for answering server errors
+/**
+ * Deliver server errors - Log the errors and notify user
+ */
 function errorDeliver (res, msg) {
   console.error(msg);
   res.writeHeader(500, {});
@@ -478,7 +522,9 @@ function errorDeliver (res, msg) {
 };
 
 
-// Responsible for answering well performed requests
+/**
+ * Deliver server responses
+ */
 function contentDeliver (res, msg) {
   res.writeHeader(200, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -488,7 +534,9 @@ function contentDeliver (res, msg) {
 };
 
 
-// Responsible for initialize SSE connection
+/**
+ * Initialize Server Side Events connection
+ */
 function sseInit (req, res) {
   req.socket.setTimeout(Infinity);
   res.writeHead(200, {
@@ -501,7 +549,9 @@ function sseInit (req, res) {
 };
 
 
-// Responsible for sending SSE messages
+/**
+ * Deliver messages on Server Side Events connection
+ */
 function sseDeliver (res, msg) {
   res.write('data: ' + JSON.stringify(msg) + '\n\n');
 };
