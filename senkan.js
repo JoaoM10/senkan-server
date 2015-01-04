@@ -1,12 +1,16 @@
-var connect = require('connect');
-var connectRoute = require('connect-route');
+var express = require('express');
+var cors = require('cors');
 var bodyParser = require('body-parser');
+var multer = require('multer'); 
 var morgan = require('morgan');
 var mysql = require('mysql');
 var validator = require('validator');
 var bcrypt = require('bcrypt');
 var paramsValidator = require('./params-validator');
 var game = require('./game');
+
+
+// HTTP SERVER -----------------------------------------------------------
 
 
 // Receive TCP port where server should listen
@@ -18,10 +22,6 @@ if(process.argv.length < 3) {
 var TCPport = Number(process.argv[2]);
 
 
-var gamesWaiting = []; // Games waiting for second player
-var gamesPlaying = []; // Games with both players connected
-var playerGame = []; // Game room where players are
-
 // Create pool of connections do MySQL DB
 var DBpool = mysql.createPool({
   host: 'localhost',
@@ -32,56 +32,48 @@ var DBpool = mysql.createPool({
 });
 
 
-var app = connect();
-app
-  .use(morgan('combined')) // Logging
-  .use(bodyParser.urlencoded({ extended: false }))
-  .use(bodyParser.json())
-  .use(connectRoute(function (router) {
+var app = express();
+
+app.use(cors()); // Enable CORS
+app.use(morgan('combined')); // Logging
+app.use(bodyParser.json()); // for parsing application/json
+app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+app.use(multer()); // for parsing multipart/form-data
 
 
-    // Deliver the ranking
-    router.post('/ranking', function (req, res, next) {
-      ranking(res);
-    });
+app.post('/ranking', function (req, res) {
+  ranking(res);
+});
+
+app.post('/register', function (req, res) {
+  register(res, req.body);
+});
+
+app.post('/join', function (req, res) {
+  join(res, req.body);
+});
+
+app.post('/notify', function (req, res) {
+  notify(res, req.body);
+});    
+
+app.post('/leave', function (req, res) {
+  leave(res, req.body);
+});
 
 
-    // Deal with registration/login
-    router.post('/register', function (req, res, next) {
-      register(res, req.body);
-    });
+app.listen(TCPport, function () {
+  console.log('Senkan server listening on port ' + TCPport);
+});
 
 
-    // Join a new game
-    router.post('/join', function (req, res, next) {
-      join(res, req.body);
-    });
-
-    
-    // Receive new shot on a game
-    router.post('/notify', function (req, res, next) {
-      notify(res, req.body);
-    });
-
-    
-    // A player left the game
-    router.post('/leave', function (req, res, next) {
-      leave(res, req.body);
-    });
-
-    
-    // Match other (invalid) functions
-    router.post(':unknown', function (req, res, next) {
-      contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
-    });
+// HANDLERS --------------------------------------------------------------
 
 
-  }))
-  .use(function (err, req, res, next) {
-    errorDeliver(res, err);
-    next();
-  });
-app.listen(TCPport);
+var games = []; // Save info of all games
+var gamesWaiting = []; // Games (id only) waiting for second player
+var playerGame = []; // Game room where players are
+var gameState = []; // Save the state of the game (waiting, playing, finished)
 
 
 // Obtain ranking from DB
@@ -243,30 +235,44 @@ function join (res, params) {
     var name = params.name;
     var password = params.pass;
     var board = params.board;
-    var gameKey;
+    var playerKey, gameInfo, gameId;
     
-    var gameInfo = gamesWaiting.pop();
-    if (gameInfo === undefined) { // No players waiting, create new game
+    var gameId = gamesWaiting.pop();
+    while (gameId !== undefined && gameState[gameId] === 'aborted')
+      gameId = gamesWaiting.pop();
+    
+    if (gameId === undefined) { // No players waiting
       gameInfo = game();
+
       gameInfo.addPlayer(name, board);
-      playerGame[name] = gameInfo.id;
-      gameKey = gameInfo.getPlayerInfo(0).key;
-      gamesWaiting.push(gameInfo);
+      playerKey = gameInfo.getPlayerInfo(0).key;
+      playerGame[name] = { gameId: gameInfo.id, key: playerKey };
+
+      games[gameInfo.id] = gameInfo;
+      gameState[gameInfo.id] = 'waiting';
+      gamesWaiting.push(gameInfo.id);
+      
       console.log('Created new game: ' + gameInfo.id);
     }
-    else if (gameInfo.getPlayerInfo(0).name !== name) { // Don't allow games with himself
-      gameInfo.addPlayer(name, board);
-      playerGame[name] = gameInfo.id;
-      gameKey = gameInfo.getPlayerInfo(1).key;
-      gamesPlaying[gameInfo.id] = gameInfo;
-      console.log('Game ' + gameInfo.id + 'has both players now!');
-    }
     else {
-      gameKey = gameInfo.getPlayerInfo(0).key;
-      gamesWaiting.push(gameInfo);
+      gameInfo = games[gameId];
+      
+      if (gameInfo.getPlayerInfo(0).name !== name) { // Don't allow games with himself
+        gameInfo.addPlayer(name, board);
+        playerKey = gameInfo.getPlayerInfo(1).key;
+        playerGame[name] = { gameId: gameInfo.id, key: playerKey };
+
+        gameState[gameInfo.id] = 'ready';
+        
+        console.log('Game ' + gameInfo.id + 'has both players now!');
+      }
+      else {
+        playerKey = gameInfo.getPlayerInfo(0).key;
+        gamesWaiting.push(gameInfo.id);
+      }
     }
       
-    contentDeliver(res, { game: gameInfo.id, key: gameKey });  
+    contentDeliver(res, { game: gameInfo.id, key: playerKey });  
     
   });
 };
@@ -280,12 +286,29 @@ function notify (res, params) {
 // A player left the game
 function leave (res, params) {
 
-  // check name, game and key...
+  var name = params.name;
+  var gameId = params.game;
+  var gameKey = params.key;
   
-  // check that the game is on waiting list...
+  // Verify parameters received
+  var playerInfo = playerGame[name];
+  if (playerInfo === undefined || playerInfo.gameId !== gameId || playerInfo.key !== gameKey) {
+    contentDeliver(res, { error: 'Invalid leave request.' });
+    return;
+  }
 
-  // left game now...
+  // Check if the game is on waiting list (cannot leave after the game started)
+  if (gameState[gameId] !== 'waiting') {
+    contentDeliver(res, { error: 'Cannot leave the game!' });
+    return;
+  }
+  
+  // Now he can leave the game
+  gameState[gameId] = 'aborted';
+  games[gameId] = undefined;
+  playerGame[name] = undefined;
 
+  contentDeliver(res, {});
 };
 
 
