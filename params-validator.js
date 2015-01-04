@@ -19,11 +19,11 @@ exports.credentials = function (name, password) {
 };
 
 
-// Validate board
+// Validate board (misses adjacent cells)
 exports.board = function (board) {
 
+  // Verify dimensions
   var check = (board.length === 10);
-  
   for (var i = 0; i < 10; i ++) {
     check = check && (board[i].length === 10);
     for (var j = 0; j < 10; j ++)
@@ -45,14 +45,14 @@ exports.board = function (board) {
           if (j < 10 && board[i - 1][j - 1 + 1]) {
             // horizontally
             while (j - 1 + size < 10 && board[i - 1][j - 1 + size]) {
-              vis[i][j + size] = true;
+              markVisited(vis, i, j + size);
               size ++;
             }
           }
           else {
             // vertically
             while (i - 1 + size < 10 && board[i - 1 + size][j - 1]) {
-              vis[i + size][j] = true;
+              markVisited(vis, i + size, j);
               size ++;
             }
           }
@@ -71,6 +71,14 @@ exports.board = function (board) {
     return 'Invalid board.';
   
   return undefined;
+};
+
+
+// Mark position (and its adjacent cells)
+function markVisited (board, row, col) {
+  for (var i = -1; i <= 1; i ++)
+    for (var j = -1; j <= 1; j ++)
+      board[row + i][col + j] = true;
 };
 
 

@@ -17,7 +17,7 @@ module.exports = function () {
                           board: board,
                           key: crypto.randomBytes(32).toString('hex'),
                           shotsBoard: vboard.generateVirtualBoard(),
-                          helth: 17,
+                          health: 17,
                           shotsCount: 0,
                           connection: undefined
                         });
@@ -60,10 +60,15 @@ module.exports = function () {
       this.players[pl].shotsCount ++;
 
       // Check if is an hit
-      if (this.players[1 - pl].board[row - 1][col - 1])
+      if (this.players[1 - pl].board[row - 1][col - 1]) {
+        this.players[1 - pl].health --;
         return 1;
+      }
       
       return 0;
+    },
+    checkWin: function (pl) {
+      return (this.players[1 - pl].health === 0);
     }
   };
 };

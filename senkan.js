@@ -379,10 +379,12 @@ function handleUpdate (req, res, params) {
     return;
   }
 
-  // If player closes his connection, end the game
-  req.on('close', function () {
-    playerLeft(gameId, name);
-  });
+  /*
+    // If player closes the connection, end the game
+    req.on('close', function () {
+      playerLeft(gameId, name);
+    });
+  */
   
   // Save connection on game
   games[gameId].setPlayerConnection(games[gameId].getPlayerId(name), res);
