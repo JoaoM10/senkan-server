@@ -1,13 +1,13 @@
-var express = require('express');
-var cors = require('cors');
-var bodyParser = require('body-parser');
-var multer = require('multer'); 
-var morgan = require('morgan');
-var mysql = require('mysql');
-var validator = require('validator');
-var bcrypt = require('bcrypt');
+var express         = require('express');
+var cors            = require('cors');
+var bodyParser      = require('body-parser');
+var multer          = require('multer'); 
+var morgan          = require('morgan');
+var mysql           = require('mysql');
+var validator       = require('validator');
+var bcrypt          = require('bcrypt');
 var paramsValidator = require('./params-validator');
-var game = require('./game');
+var game            = require('./game');
 
 
 // HTTP SERVER -----------------------------------------------------------
@@ -41,25 +41,45 @@ app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x
 app.use(multer()); // for parsing multipart/form-data
 
 
+// ROUTING --------------------------------
+
+// POST ---------------------
+
 app.post('/ranking', function (req, res) {
-  ranking(res);
+  handleRanking(res);
 });
 
 app.post('/register', function (req, res) {
-  register(res, req.body);
+  handleRegister(res, req.body);
 });
 
 app.post('/join', function (req, res) {
-  join(res, req.body);
+  handleJoin(res, req.body);
 });
 
 app.post('/notify', function (req, res) {
-  notify(res, req.body);
+  handleNotify(res, req.body);
 });    
 
 app.post('/leave', function (req, res) {
-  leave(res, req.body);
+  handleLeave(res, req.body);
 });
+
+app.post('*', function (req, res) { // Default (unknown function)
+  contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
+});
+
+// GET ----------------------
+
+app.get('/update', function (req, res) {
+  handleUpdate(res, req.query);
+});
+
+app.get('*', function (req, res) { // Default (unknown function)
+  contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
+});
+
+// END OF ROUTING -------------------------
 
 
 app.listen(TCPport, function () {
@@ -76,8 +96,8 @@ var playerGame = []; // Game room where players are
 var gameState = []; // Save the state of the game (waiting, playing, finished)
 
 
-// Obtain ranking from DB
-function ranking (res) {
+// Obtain ranking from DB and deliver it to the user
+function handleRanking (res) {
 
   DBpool.getConnection(function (err, conn) {
     if (err) {
@@ -100,7 +120,7 @@ function ranking (res) {
 };    
 
 
-// Register/Login into senkan
+// Register/Login user
 function authenticate (res, name, password, callback) {
 
   // Must check credential's format first
@@ -211,7 +231,7 @@ function authenticate (res, name, password, callback) {
 
 
 // Deal with register/login (before entering a game)
-function register (res, params) {
+function handleRegister (res, params) {
   authenticate(res, params.name, params.pass, function (resAuth) {
     if (resAuth)
       contentDeliver(res, {});
@@ -219,8 +239,8 @@ function register (res, params) {
 }
 
 
-// Join the player to the game (may need to create a new game)
-function join (res, params) {
+// Join the player to the game (may need to create a new one)
+function handleJoin (res, params) {
 
   authenticate(res, params.name, params.pass, function (resAuth) {
     if (!resAuth)
@@ -278,13 +298,18 @@ function join (res, params) {
 };
 
 
-// Receive a shot on a game
-function notify (res, params) {
+// Player connected to a game (SSE)
+function handleUpdate (res, params) {
 };
 
 
-// A player left the game
-function leave (res, params) {
+// Receive a shot on a game
+function handleNotify (res, params) {
+};
+
+
+// Player left a game
+function handleLeave (res, params) {
 
   var name = params.name;
   var gameId = params.game;

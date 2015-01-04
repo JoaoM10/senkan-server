@@ -1,6 +1,6 @@
 var validator = require('validator');
 var _ = require('underscore');
-
+var vboard = require('./vboard');
 
 // Validate credentials
 exports.credentials = function (name, password) {
@@ -32,7 +32,7 @@ exports.board = function (board) {
   
   if (check) {
     // Make sure that ships are well placed
-    var vis = createVirtualBoard();
+    var vis = vboard.generateVirtualBoard();
     var ships = [];
 
     for (var i = 1; i <= 10; i ++) {
@@ -69,14 +69,3 @@ exports.board = function (board) {
   
   return undefined;
 };
-
-
-// Create a virtual board (with margins)
-function createVirtualBoard () {
-  var newBoard = [], line = [];
-  for (var i = 0; i < 12; i ++)
-    line.push(false);
-  for (var i = 0; i < 12; i ++)  
-    newBoard.push(line);
-  return newBoard;
-}
