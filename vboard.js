@@ -4,7 +4,7 @@ exports.generateVirtualBoard = function () {
   var newBoard = [];
   for (var i = 0; i < 12; i ++) {
     var line = [];
-    for (var i = 0; i < 12; i ++)  
+    for (var j = 0; j < 12; j ++)  
       line.push(false);
     newBoard.push(line);
   }

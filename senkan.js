@@ -135,7 +135,7 @@ function updateRanking (name, shots) {
       return;
     }
 
-    conn.query('SELECT used_id FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
+    conn.query('SELECT user_id FROM users WHERE name = ? LIMIT 1', [name], function (err, rows) {
       if (err) {
         console.error('Error on query the DB: ' + err);
         return;
@@ -221,7 +221,6 @@ function authenticate (res, name, password, callback) {
 
                   conn.release();
 
-                  console.log('New user: ' + name);
                   return callback(true);
                 });
               });              
@@ -306,8 +305,6 @@ function handleJoin (res, params) {
 
       games[gameInfo.id] = gameInfo;
       gamesWaiting.push(gameInfo.id);
-      
-      console.log('Created new game: ' + gameInfo.id);
     }
     else {
       gameInfo = games[gameId];
@@ -319,8 +316,6 @@ function handleJoin (res, params) {
         playerGame[name] = { gameId: gameInfo.id, key: playerKey };
 
         games[gameInfo.id].state = 'ready';
-        
-        console.log('Game ' + gameInfo.id + 'has both players now!');
       }
       else {
         playerKey = gameInfo.getPlayerInfo(0).key;
@@ -335,17 +330,13 @@ function handleJoin (res, params) {
 
 
 // Close the game
-function closeGame (gameID) {
+function closeGame (gameId) {
 
   // Update player state
   playerGame[games[gameId].getPlayerInfo(0).name] = undefined;
   playerGame[games[gameId].getPlayerInfo(1).name] = undefined;
 
-  // Close players connections
-  games[gameId].getPlayerConnection(0).end();
-  games[gameId].getPlayerConnection(1).end();
-
-  games[gameId] = undefined;  
+  games[gameId].state = 'closed';  
 };
 
 
