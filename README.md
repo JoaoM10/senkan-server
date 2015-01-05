@@ -12,11 +12,8 @@ Node.js server for Senkan.
     \-------------------'   .  .  .  .  .  .  .  .   '--------------->
      \                         SENKAN    SERVER                    /
       \___________________________________________________________/
-  wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
-wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
-   wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww 
 
-   
+
 ## Deploy
 
 First, start by download the repository.
