@@ -65,14 +65,22 @@ app.post('/leave', function (req, res) {
   handleLeave(res, req.body);
 });
 
-app.post('*', function (req, res) { // Default (unknown function)
+app.post('/:unknown', function (req, res) { // Default (unknown function)
   contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
+});
+
+app.post('*', function (req, res) { // Default (unknown function)
+  contentDeliver(res, { error: 'Unknown function' });
 });
 
 // GET ----------------------
 
 app.get('/update', function (req, res) {
   handleUpdate(req, res, req.query);
+});
+
+app.get('/:unknown', function (req, res) { // Default (unknown function)
+  contentDeliver(res, { error: 'Unknown function ' + req.params.unknown });
 });
 
 app.get('*', function (req, res) { // Default (unknown function)
