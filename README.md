@@ -3,6 +3,20 @@ Senkan Server
 
 Node.js server for Senkan.
 
+
+                                     # #  ( )
+                                  ___#_#___|__
+                              _  |____________|  _
+                       _=====| | |            | | |==== _
+                 =====| |.---------------------------. | |====
+    \-------------------'   .  .  .  .  .  .  .  .   '--------------->
+     \                         SENKAN    SERVER                    /
+      \___________________________________________________________/
+  wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+   wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww 
+
+   
 ## Deploy
 
 First, start by download the repository.
@@ -10,7 +24,7 @@ First, start by download the repository.
 $ git clone https://github.com/JoaoM10/senkan-server.git
 ```
 
-Then, you need to create the database (MySQL). Run the following command on MySQL shell, on the repo dir:
+Then, you need to create the database (MySQL). Run the following command on MySQL shell, on the server's main directory:
 ```
 mysql> source db.sql
 ```
@@ -23,7 +37,7 @@ $ npm update
 $ node senkan <port>
 ```
 
-Note: `npm update` is only need on the first time.
+Note: `npm update` is only needed on the first time.
 
 You can also use `forever` to relauch the server if it stops unexpectedly:
 ```
