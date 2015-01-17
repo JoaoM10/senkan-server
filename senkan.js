@@ -521,7 +521,6 @@ function handleLeave (res, params) {
   
   // Leave the game and update games and players info
   games[gameId].state = 'aborted';
-  games[gameId] = undefined;
   playerGame[name] = undefined;
 
   contentDeliver(res, {});
